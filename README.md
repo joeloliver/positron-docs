@@ -29,6 +29,35 @@ A **lightweight, privacy-first** document Q&A system designed for personal use w
 - 🔌 **Flexible Providers**: Support for both Ollama (local) and OpenAI embeddings/LLMs
 - 🎨 **Modern UI**: Clean React interface with Tailwind CSS
 
+## Screenshots
+
+### 🏠 Main Interface
+Clean, intuitive design with easy navigation between document management and chat functions.
+
+<div align="center">
+<img src="images/main-screen.png" alt="Positron Docs Main Interface" width="800"/>
+</div>
+
+### 📚 Document Library
+Manage your document collection with upload capabilities and clear organization.
+
+<div align="center">
+<img src="images/documents-library.png" alt="Document Library Interface" width="800"/>
+</div>
+
+### 💬 Interactive Chat Experience
+Natural conversation with your documents using either local Ollama models or OpenAI.
+
+<div align="center">
+<img src="images/chat-with-docs-001.png" alt="Chat Interface - Conversation View" width="800"/>
+</div>
+
+<div align="center">
+<img src="images/chat-with-docs-002.png" alt="Chat Interface - Document Context" width="800"/>
+</div>
+
+---
+
 ## Architecture & Data Pipeline
 
 ```mermaid
