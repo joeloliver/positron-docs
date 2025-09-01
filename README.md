@@ -1,6 +1,23 @@
-# Document RAG Interface
+# Positron Docs - Simple Local RAG Interface
 
-A local, privacy-first document QA system with Ollama/OpenAI flexibility, URL/PDF ingestion, chat UI, and interaction history.
+A **lightweight, privacy-first** document Q&A system designed for personal use with your local documents. Built for users who found existing enterprise and open-source RAG solutions overkill for their needs.
+
+## About This Project
+
+### 🏠 **Local-First Privacy**
+- **Ollama Integration**: Run everything locally with open-source models - your documents never leave your machine
+- **OpenAI Optional**: Use cloud models only when you choose to (understand that this shares data with OpenAI)
+- **No Data Mining**: Your conversations and documents stay private
+
+### ⚡ **Minimal & Efficient** 
+- **Lightweight**: Unlike heavyweight enterprise solutions, this runs on minimal resources
+- **Simple Setup**: Get running in minutes, not hours
+- **Clean Interface**: Modern, intuitive UI without feature bloat
+
+### 🎯 **Purpose-Built for Personal Use**
+- **Document-Centric**: Designed specifically for interacting with your personal document collection
+- **Local Ollama**: Perfect for users running local LLMs who value privacy and control
+- **Flexible Deployment**: Works with both local (Ollama) and cloud (OpenAI) providers
 
 ## Features
 
@@ -12,11 +29,42 @@ A local, privacy-first document QA system with Ollama/OpenAI flexibility, URL/PD
 - 🔌 **Flexible Providers**: Support for both Ollama (local) and OpenAI embeddings/LLMs
 - 🎨 **Modern UI**: Clean React interface with Tailwind CSS
 
+## Privacy & Resource Considerations
+
+### 🔒 **Privacy Models**
+
+**Recommended: Full Local Setup (Maximum Privacy)**
+- **Embeddings**: Ollama with `nomic-embed-text` model
+- **LLM**: Ollama with `llama3.2` or similar local model
+- **Result**: Zero data leaves your machine, complete privacy
+
+**Hybrid Setup (Partial Privacy)**
+- **Embeddings**: Local Ollama (documents stay private)
+- **LLM**: OpenAI (only your questions are sent to OpenAI, not document content)
+
+**Cloud Setup (Convenience over Privacy)**
+- **Embeddings**: OpenAI (document content sent for embedding)
+- **LLM**: OpenAI (full conversation shared)
+- **⚠️ Warning**: This shares your document content and conversations with OpenAI
+
+### 💻 **Resource Requirements**
+
+**Minimal Setup (Recommended)**
+- **RAM**: 8GB+ (4GB for Ollama + 2GB for embeddings + 2GB for system)
+- **Storage**: ~5GB for models + your document storage
+- **CPU**: Any modern processor (embedding is the main workload)
+
+**Why This is Lighter**
+- Simple setup (no complex orchestration needed)
+- Lightweight vector database (straightforward Chroma setup)
+- Focused feature set for personal use
+- Optimized for single-user, local deployment
+
 ## Prerequisites
 
 - Python 3.9+
 - Node.js 20.17+
-- Ollama (if using local models)
+- Ollama (if using local models - **recommended for privacy**)
 
 ## Quick Start
 
@@ -175,6 +223,32 @@ npm install
 3. **Module not found**: Activate virtual environment before running backend
 4. **npm permission errors**: Fix with `sudo chown -R $(whoami) ~/.npm`
 
+## How is This Different?
+
+### **vs. Other Open Source RAG Solutions**
+
+| Feature | Positron Docs | Typical Enterprise RAG |
+|---------|---------------|------------------------|
+| **Setup Complexity** | `pip install` + `npm run dev` | Docker Compose with 10+ services |
+| **Resource Usage** | ~6-8GB RAM | 16-32GB RAM |
+| **Dependencies** | Python + Node.js + Ollama | Elasticsearch + Redis + PostgreSQL + Multiple microservices |
+| **Privacy Control** | Full local with Ollama | Often requires cloud components |
+| **Learning Curve** | 5 minutes to first chat | Hours of configuration |
+| **Use Case** | Personal document interaction | Enterprise team collaboration |
+
+### **When to Use Positron Docs**
+✅ You want to chat with your personal documents  
+✅ You value privacy and local control  
+✅ You prefer simple, lightweight solutions  
+✅ You're already using or interested in Ollama  
+✅ You want something that "just works" without complexity  
+
+### **When to Use Something Else**
+❌ You need multi-user collaboration  
+❌ You need enterprise security features  
+❌ You need complex workflow automation  
+❌ You have a team of developers to maintain complexity  
+
 ## Development
 
 ### Adding New Document Types
@@ -188,6 +262,33 @@ Modify chunk size and overlap in `DocumentProcessor.__init__()`.
 ### Adding New Embedding Models
 
 Extend `EmbeddingProvider` class in `backend/embeddings.py`.
+
+## Core Philosophy
+
+**"Simple, Private, Effective"**
+
+This project was created for users who found existing RAG solutions too complex for personal document interaction. The goal is to provide:
+
+1. **Simplicity First**: If you can't get it running in under 10 minutes, it's too complex
+2. **Privacy by Default**: Your documents should stay on your machine unless you explicitly choose otherwise
+3. **Resource Conscious**: Should run comfortably on a typical developer laptop
+4. **Ollama Native**: Built with local LLMs in mind, cloud integration is secondary
+5. **Personal Scale**: Optimized for individual use, not enterprise deployment
+
+**Perfect for:**
+- Researchers with personal document collections
+- Developers wanting local code/documentation search
+- Students organizing academic papers
+- Anyone who values digital privacy
+- Ollama enthusiasts wanting a practical RAG application
+
+## Contributing
+
+Contributions welcome! This project prioritizes:
+- Maintaining simplicity over adding features
+- Privacy-first design decisions
+- Resource efficiency
+- Clear, minimal code
 
 ## License
 
