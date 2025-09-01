@@ -22,12 +22,17 @@ from backend.vector_store import VectorStore
 from backend.document_processor import DocumentProcessor
 from backend.llm import ChatEngine
 
-# Configure logging
+# Configure logging - Force DEBUG for testing
 logging.basicConfig(
-    level=logging.INFO if not settings.debug else logging.DEBUG,
+    level=logging.DEBUG,  # Always DEBUG for now to troubleshoot
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Reduce noise from verbose libraries
+logging.getLogger("httpx").setLevel(logging.INFO)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("trafilatura").setLevel(logging.WARNING)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -129,11 +134,18 @@ async def ingest_url(
 ):
     """Ingest content from URL"""
     
+    logger.info(f"=== Starting URL ingestion ===")
+    logger.info(f"URL: {request.url}")
+    logger.info(f"Extract PDFs: {request.extract_pdfs}")
+    
     try:
         # Process main URL
+        logger.info(f"Step 1: Processing main URL content")
         chunks, metadatas = doc_processor.process_url(request.url)
+        logger.info(f"Main URL processed: {len(chunks)} chunks extracted")
         
         # Create document record
+        logger.info(f"Step 2: Creating document record in database")
         doc = Document(
             filename=request.url,
             content_type="text/html",
@@ -142,38 +154,94 @@ async def ingest_url(
         session.add(doc)
         session.commit()
         session.refresh(doc)
+        logger.info(f"Document record created with ID: {doc.id}")
         
         # Add to vector store
+        logger.info(f"Step 3: Adding chunks to vector store")
         num_chunks = vector_store.add_documents(chunks, metadatas, doc.id)
+        logger.info(f"Added {num_chunks} chunks to vector store")
         
         # Update document
         doc.num_chunks = num_chunks
         session.commit()
+        logger.info(f"Document record updated with chunk count")
         
         pdf_results = []
         
         # Extract and process PDFs if requested
         if request.extract_pdfs:
-            pdf_links = doc_processor.extract_pdf_links(request.url)
+            logger.info(f"Step 4: PDF extraction requested")
+            logger.info(f"About to call extract_pdf_links for {request.url}")
             
-            for pdf_url in pdf_links[:5]:  # Limit to 5 PDFs
+            try:
+                pdf_links = doc_processor.extract_pdf_links(request.url)
+                logger.info(f"extract_pdf_links completed - Found {len(pdf_links)} potential PDF links")
+                if pdf_links:
+                    logger.info(f"PDF URLs found: {pdf_links}")
+            except Exception as e:
+                logger.error(f"Failed to extract PDF links: {e}", exc_info=True)
+                pdf_links = []
+            
+            for pdf_url in pdf_links[:3]:  # Limit to 3 PDFs to reduce memory usage
                 try:
-                    # Download PDF
-                    with httpx.Client() as client:
-                        response = client.get(pdf_url, follow_redirects=True)
-                        response.raise_for_status()
+                    logger.info(f"Attempting to download PDF from: {pdf_url}")
+                    
+                    # Download PDF with timeout and headers
+                    with httpx.Client(timeout=30.0) as client:  # Reduced timeout
+                        headers = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                        
+                        # Stream the response to check size first
+                        with client.stream('GET', pdf_url, follow_redirects=True, headers=headers) as response:
+                            response.raise_for_status()
+                            
+                            # Check content type
+                            content_type = response.headers.get('content-type', '').lower()
+                            content_length = response.headers.get('content-length')
+                            logger.info(f"Content-Type for {pdf_url}: {content_type}")
+                            logger.info(f"Content-Length for {pdf_url}: {content_length}")
+                            
+                            # Skip if too large (>20MB)
+                            if content_length and int(content_length) > 20_000_000:
+                                logger.warning(f"PDF {pdf_url} is too large ({content_length} bytes). Skipping.")
+                                continue
+                            
+                            # Verify it's actually a PDF
+                            if 'pdf' not in content_type:
+                                logger.warning(f"URL {pdf_url} does not appear to be a PDF. Skipping.")
+                                continue
+                            
+                            # Read content in chunks to manage memory
+                            content = b''
+                            for chunk in response.iter_bytes(chunk_size=8192):
+                                content += chunk
+                                # Stop if getting too large during download
+                                if len(content) > 20_000_000:
+                                    logger.warning(f"PDF {pdf_url} exceeded 20MB during download. Stopping.")
+                                    break
                     
                     # Save to temp file
                     with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
-                        tmp.write(response.content)
+                        tmp.write(content)
                         tmp_path = tmp.name
+                    
+                    logger.info(f"Downloaded PDF to temp file: {len(content)} bytes")
+                    
+                    logger.info(f"Processing PDF: {pdf_url}")
                     
                     # Process PDF
                     pdf_chunks, pdf_metadatas = doc_processor.process_pdf(tmp_path)
                     
+                    if not pdf_chunks:
+                        logger.warning(f"No content extracted from PDF: {pdf_url}")
+                        Path(tmp_path).unlink()
+                        continue
+                    
                     # Create document record
+                    pdf_filename = pdf_url.split('/')[-1] or f"document_{len(pdf_results)}.pdf"
                     pdf_doc = Document(
-                        filename=pdf_url.split('/')[-1],
+                        filename=pdf_filename[:255],  # Limit filename length
                         content_type="application/pdf",
                         source_url=pdf_url
                     )
@@ -191,14 +259,28 @@ async def ingest_url(
                     
                     pdf_results.append({
                         "url": pdf_url,
-                        "chunks": pdf_num_chunks
+                        "chunks": pdf_num_chunks,
+                        "filename": pdf_filename
                     })
+                    
+                    logger.info(f"Successfully processed PDF {pdf_url}: {pdf_num_chunks} chunks")
                     
                     # Clean up temp file
                     Path(tmp_path).unlink()
                     
+                except httpx.TimeoutException:
+                    logger.error(f"Timeout downloading PDF {pdf_url}")
+                except httpx.HTTPStatusError as e:
+                    logger.error(f"HTTP error downloading PDF {pdf_url}: {e.response.status_code}")
                 except Exception as e:
-                    logger.error(f"Error processing PDF {pdf_url}: {e}")
+                    logger.error(f"Error processing PDF {pdf_url}: {str(e)}", exc_info=True)
+                    # Clean up temp file if it exists
+                    if 'tmp_path' in locals() and Path(tmp_path).exists():
+                        Path(tmp_path).unlink()
+        
+        logger.info(f"=== URL ingestion completed successfully ===")
+        logger.info(f"Main URL chunks: {num_chunks}")
+        logger.info(f"PDFs processed: {len(pdf_results)}")
         
         return {
             "main_url": {
@@ -207,8 +289,14 @@ async def ingest_url(
             },
             "pdfs": pdf_results
         }
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout error during URL ingestion: {e}")
+        raise HTTPException(504, f"Request timed out while processing URL")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error during URL ingestion: {e.response.status_code}")
+        raise HTTPException(502, f"Failed to fetch URL: HTTP {e.response.status_code}")
     except Exception as e:
-        logger.error(f"Error ingesting URL: {e}")
+        logger.error(f"Unexpected error ingesting URL: {e}", exc_info=True)
         raise HTTPException(500, f"Error ingesting URL: {str(e)}")
 
 @app.post("/api/chat", response_model=ChatResponse)
