@@ -29,6 +29,82 @@ A **lightweight, privacy-first** document Q&A system designed for personal use w
 - 🔌 **Flexible Providers**: Support for both Ollama (local) and OpenAI embeddings/LLMs
 - 🎨 **Modern UI**: Clean React interface with Tailwind CSS
 
+## Architecture & Data Pipeline
+
+```mermaid
+graph TD
+    subgraph "Document Ingestion"
+        A[PDF/TXT/MD Files] --> B[Document Processor]
+        C[Web URLs] --> D[URL Content Extractor]
+        D --> B
+        B --> E[Text Chunking<br/>RecursiveCharacterTextSplitter]
+    end
+    
+    subgraph "Embedding & Storage"
+        E --> F{Embedding Provider}
+        F -->|Local| G[Ollama<br/>nomic-embed-text]
+        F -->|Cloud| H[OpenAI<br/>text-embedding-3-small]
+        G --> I[Vector Embeddings]
+        H --> I
+        I --> J[Chroma Vector Store<br/>Persistent Local Storage]
+    end
+    
+    subgraph "Query Processing"
+        K[User Question] --> L{Embedding Provider}
+        L -->|Local| G
+        L -->|Cloud| H
+        G --> M[Query Vector]
+        H --> M
+        M --> N[Similarity Search<br/>Chroma DB]
+        J --> N
+        N --> O[Top K Relevant Chunks]
+    end
+    
+    subgraph "Response Generation"
+        O --> P[Context + Question]
+        K --> P
+        P --> Q{LLM Provider}
+        Q -->|Local| R[Ollama<br/>llama3.2/mistral]
+        Q -->|Cloud| S[OpenAI<br/>gpt-4o-mini]
+        R --> T[Generated Response]
+        S --> T
+    end
+    
+    subgraph "Session Management"
+        T --> U[SQLite Database]
+        U --> V[Chat History<br/>Session Tracking]
+        V --> W[React Frontend<br/>Tailwind UI]
+    end
+    
+    style A fill:#e1f5fe
+    style C fill:#e1f5fe
+    style G fill:#c8e6c9
+    style R fill:#c8e6c9
+    style H fill:#ffecb3
+    style S fill:#ffecb3
+    style J fill:#f3e5f5
+    style U fill:#f3e5f5
+    style W fill:#e8f5e8
+```
+
+### Pipeline Explanation
+
+**🔵 Document Ingestion**
+- Accepts multiple input types (files, URLs)
+- Processes and chunks documents for optimal retrieval
+
+**🟢 Local Processing (Privacy-First)**
+- Ollama embeddings and LLM keep everything on your machine
+- No external API calls required
+
+**🟡 Cloud Processing (Optional)**
+- OpenAI integration for enhanced performance
+- ⚠️ Data shared with OpenAI when enabled
+
+**🟣 Storage & Memory**
+- Chroma for vector storage (persistent, local)
+- SQLite for chat history and metadata
+
 ## Privacy & Resource Considerations
 
 ### 🔒 **Privacy Models**
