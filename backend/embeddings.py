@@ -15,7 +15,8 @@ class EmbeddingProvider:
 
 class OllamaEmbeddings(EmbeddingProvider):
     def __init__(self):
-        self.base_url = settings.ollama_base_url
+        # Use dedicated embedding URL if set, fallback to base URL
+        self.base_url = settings.ollama_embedding_url or settings.ollama_base_url
         self.model = settings.ollama_embedding_model
         
     def embed_text(self, text: str) -> List[float]:

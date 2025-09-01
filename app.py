@@ -306,6 +306,29 @@ async def get_session_messages(
         for msg in messages
     ]
 
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(
+    session_id: int,
+    session: Session = Depends(get_session)
+):
+    """Delete a chat session and all its messages"""
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(404, "Chat session not found")
+    
+    # Delete all messages in the session (cascade should handle this, but being explicit)
+    messages = session.exec(
+        select(ChatMessage).where(ChatMessage.session_id == session_id)
+    ).all()
+    for msg in messages:
+        session.delete(msg)
+    
+    # Delete the session
+    session.delete(chat_session)
+    session.commit()
+    
+    return {"message": "Session deleted successfully"}
+
 @app.post("/api/search", response_model=List[SearchResult])
 async def search_documents(request: SearchRequest):
     """Search documents"""

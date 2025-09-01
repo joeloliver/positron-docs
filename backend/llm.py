@@ -16,7 +16,8 @@ class LLMProvider:
 
 class OllamaLLM(LLMProvider):
     def __init__(self):
-        self.base_url = settings.ollama_base_url
+        # Use dedicated chat URL if set, fallback to base URL
+        self.base_url = settings.ollama_chat_url or settings.ollama_base_url
         self.model = settings.ollama_chat_model
     
     def generate(self, prompt: str, context: Optional[str] = None) -> str:

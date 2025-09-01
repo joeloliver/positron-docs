@@ -49,6 +49,11 @@ export const getSessionMessages = async (sessionId) => {
   return response.data;
 };
 
+export const deleteSession = async (sessionId) => {
+  const response = await api.delete(`/sessions/${sessionId}`);
+  return response.data;
+};
+
 export const searchDocuments = async (query, topK = 5) => {
   const response = await api.post('/search', {
     query,

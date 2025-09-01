@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     embedding_provider: str = "ollama"
     
     # Ollama Settings
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = "http://localhost:11434"  # Default/fallback URL
+    ollama_embedding_url: str = "http://localhost:11434"  # Embedding model URL
+    ollama_chat_url: str = "http://localhost:11434"  # Chat model URL
     ollama_embedding_model: str = "nomic-embed-text"
     ollama_chat_model: str = "llama3.2"
     
@@ -31,7 +33,7 @@ class Settings(BaseSettings):
     max_file_size: int = 10485760  # 10MB
     
     # App Settings
-    app_name: str = "Document RAG Interface"
+    app_name: str = "Positron Docs"
     app_version: str = "1.0.0"
     debug: bool = True
     
